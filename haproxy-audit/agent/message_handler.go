@@ -1,20 +1,16 @@
-package message
+package agent
 
 import (
+	"github./securecom/haproxy-audit/config"
 	"log"
 
-	"github./securecom/haproxy-log-parser/config"
-	"github./securecom/haproxy-log-parser/models"
-
-	"github./securecom/haproxy-log-parser/db"
+	spoe "github.com/criteo/haproxy-spoe-go"
+	"github./securecom/haproxy-audit/db"
+	"github./securecom/haproxy-audit/models"
 )
 
-var (
-	Config *config.Config
-)
-
-func HandleLogMessage(logMsg LogMessage) {
-	err := logMsg.parse()
+func HandleAuditResponse(msg spoe.Message) {
+	agentMsg, err := NewAgentMessage(msg)
 	if err != nil {
 		if _, ok := err.(*NotAuditableError); ok {
 			// Log out the not auditable errors.
@@ -24,10 +20,10 @@ func HandleLogMessage(logMsg LogMessage) {
 		return
 	}
 
-	handleMessage(&logMsg)
+	go handleMessage(agentMsg)
 }
 
-func handleMessage(msg *LogMessage) {
+func handleMessage(msg *AgentMessage) {
 
 	handler := NewMessageHandler(msg)
 
@@ -35,16 +31,18 @@ func handleMessage(msg *LogMessage) {
 	if err != nil {
 		log.Printf("Unable to add event log %v", err)
 	}
-	log.Printf("Audit message logged %+v\n", msg)
+	log.Printf("Agent message logged %+v\n", msg)
 }
 
 type MessageHandler struct {
-	Message *LogMessage
+	Message *AgentMessage
+	User    *models.User
+	Person  *models.Person
 	con     *db.DbConnection
-	config  *config.Config
+	config	*config.Config
 }
 
-func NewMessageHandler(msg *LogMessage) *MessageHandler {
+func NewMessageHandler(msg *AgentMessage) *MessageHandler {
 	handler := &MessageHandler{}
 	handler.Message = msg
 	handler.con = db.DbConn
@@ -55,7 +53,7 @@ func NewMessageHandler(msg *LogMessage) *MessageHandler {
 func (m *MessageHandler) addEventLog() error {
 
 	err := models.AddEventLog(m.con, m.config.EventTable, m.Message.QueryAuthToken, m.Message.IpAddress,
-		m.Message.Time, m.Message.Method, m.Message.PathApiVersion, m.Message.PathApi, m.Message.PathApiId,
+		m.Message.Method, m.Message.PathApiVersion, m.Message.PathApi, m.Message.PathApiId,
 		m.Message.PathConcept, m.Message.PathConceptId, m.Message.PathAction)
 	if err != nil {
 		return err

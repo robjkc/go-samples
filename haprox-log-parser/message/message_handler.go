@@ -3,10 +3,10 @@ package message
 import (
 	"log"
 
-	"github.dmp.com/securecom/haproxy-log-parser/config"
-	"github.dmp.com/securecom/haproxy-log-parser/models"
+	"haproxy-log-parser/config"
+	"haproxy-log-parser/models"
 
-	"github.dmp.com/securecom/haproxy-log-parser/db"
+	"haproxy-log-parser/db"
 )
 
 var (
